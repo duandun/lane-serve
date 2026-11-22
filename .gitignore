@@ -4,3 +4,7 @@ node_modules
 .vscode
 .dist
 .DS_Store
+dist
+.tanstack
+.output
+.nitro

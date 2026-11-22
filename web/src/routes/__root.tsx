@@ -1,0 +1,42 @@
+import { HeadContent, Link, Outlet, Scripts, createRootRoute } from '@tanstack/react-router'
+
+import appCss from '../styles.css?url'
+
+export const Route = createRootRoute({
+  head: () => ({
+    meta: [
+      { charSet: 'utf-8' },
+      { name: 'viewport', content: 'width=device-width, initial-scale=1' },
+      { title: 'lane-serve' },
+    ],
+    links: [{ rel: 'stylesheet', href: appCss }],
+  }),
+  shellComponent: RootDocument,
+  component: RootLayout,
+})
+
+function RootDocument({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="zh-CN">
+      <head>
+        <HeadContent />
+      </head>
+      <body>
+        {children}
+        <Scripts />
+      </body>
+    </html>
+  )
+}
+
+function RootLayout() {
+  return (
+    <>
+      <nav>
+        <Link to="/">聊天</Link>
+        <Link to="/broadcast">广播</Link>
+      </nav>
+      <Outlet />
+    </>
+  )
+}
