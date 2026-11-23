@@ -7,24 +7,166 @@ body {
   font-family: system-ui, sans-serif;
 }
 
-main {
-  width: min(42rem, calc(100% - 2rem));
-  margin: 2rem auto 4rem;
-}
-
 nav {
   display: flex;
-  gap: 1rem;
-  width: min(42rem, calc(100% - 2rem));
-  margin: 1rem auto 0;
+  gap: 0.25rem;
 }
 
 nav a {
-  color: inherit;
+  padding: 0.375rem 0.75rem;
+  border-radius: var(--radius-3);
+  color: var(--gray-11);
+  font-size: var(--font-size-2);
+  text-decoration: none;
 }
 
-input,
-button {
-  font: inherit;
-  padding: 0.3rem 0.6rem;
+nav a:hover {
+  background: var(--gray-a3);
+}
+
+nav a.active {
+  background: var(--gray-a4);
+  color: var(--gray-12);
+  font-weight: 500;
+}
+
+.rt-Card {
+  box-shadow: var(--shadow-3);
+}
+
+.chat-scroll {
+  height: 50vh;
+  min-height: 320px;
+}
+
+.msg-row {
+  display: flex;
+}
+
+.msg-row.own {
+  justify-content: flex-end;
+}
+
+.msg {
+  max-width: 80%;
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radius-4);
+  background: var(--gray-3);
+  overflow-wrap: anywhere;
+}
+
+.msg-row.own .msg {
+  background: var(--accent-3);
+}
+
+@media (max-width: 640px) {
+  .chat-scroll {
+    height: calc(100dvh - 21rem);
+    min-height: 220px;
+  }
+
+  nav a {
+    padding: 0.5rem 0.875rem;
+  }
+
+  /* 16px keeps iOS from zooming on focus */
+  .rt-TextFieldInput,
+  .rt-TextAreaInput {
+    font-size: 16px;
+  }
+
+  .msg {
+    max-width: 90%;
+  }
+}
+
+/* phone.tsx */
+.phone-scroll {
+  height: 56vh;
+  min-height: 320px;
+}
+
+.phone-row {
+  display: flex;
+}
+
+.phone-row.user {
+  justify-content: flex-end;
+}
+
+.phone-bubble {
+  max-width: 85%;
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radius-4);
+  background: var(--gray-3);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.phone-row.user .phone-bubble {
+  background: var(--accent-3);
+}
+
+.phone-row.system,
+.phone-row.change {
+  justify-content: center;
+}
+
+.phone-row.system .phone-bubble,
+.phone-row.change .phone-bubble {
+  max-width: 95%;
+  background: transparent;
+  color: var(--gray-10);
+  font-size: var(--font-size-1);
+}
+
+@media (max-width: 640px) {
+  .phone-scroll {
+    height: calc(100dvh - 19rem);
+    min-height: 220px;
+  }
+}
+
+.phone-working {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.25rem 0.5rem;
+}
+
+.phone-working .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent-9);
+  animation: phone-dot-pulse 1s ease-in-out infinite;
+}
+
+.phone-working .dot:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.phone-working .dot:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes phone-dot-pulse {
+  0%,
+  80%,
+  100% {
+    opacity: 0.25;
+    transform: scale(0.8);
+  }
+  40% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .phone-working .dot {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
 }

@@ -86,7 +86,7 @@ app.post('/api/agent/pair', async (req, res) => {
   }
   try {
     const code = issuePhoneCode();
-    const url = `${PUBLIC_BASE_URL}/broadcast?code=${encodeURIComponent(code)}`;
+    const url = `${PUBLIC_BASE_URL}/phone?code=${encodeURIComponent(code)}`;
     const qr = await QRCode.toDataURL(url, { width: 360, margin: 1, errorCorrectionLevel: 'M' });
     res.json({ code, url, qr });
   } catch (error) {
@@ -130,6 +130,27 @@ io.on('connection', (socket) => {
     if (socket.data.phoneCode) socket.leave(socket.data.phoneCode);
     socket.data.phoneCode = code;
     socket.join(code);
+  });
+
+  socket.on('agent messages', (payload) => {
+    const code = typeof payload?.code === 'string' ? payload.code.trim() : '';
+    if (!isValidPhoneCode(code) || !allow(`agent-msg:${socket.id}`, 60, 10 * 1000)) return;
+    const list = Array.isArray(payload?.messages) ? payload.messages.slice(-100) : [];
+    const messages = [];
+    for (const item of list) {
+      if (!item || typeof item !== 'object') continue;
+      const role = item.role;
+      const text = typeof item.text === 'string' ? item.text.slice(0, 4000).trim() : '';
+      if (!text || !['user', 'assistant', 'system', 'change'].includes(role)) continue;
+      messages.push({ role, text });
+    }
+    io.to(code).emit('agent messages', { messages, working: payload?.working === true });
+  });
+
+  socket.on('agent sync', (payload) => {
+    const code = typeof payload?.code === 'string' ? payload.code.trim() : '';
+    if (!isValidPhoneCode(code) || !allow(`agent-sync:${socket.id}`, 20, 10 * 1000)) return;
+    io.to(code).emit('agent sync', { code });
   });
 
   socket.on('chat message', (payload) => {

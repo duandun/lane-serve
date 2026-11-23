@@ -8,9 +8,10 @@
 两者没有共享代码或依赖；接口约定为：
 
 - `GET /health` → `{ status: 'ok' }`
-- `POST /api/agent/pair` → 生成 6 位数字连接码，返回 `{ code, url, qr }`（`qr` 是 PNG Data URL，`url` 指向 `/broadcast?code=…`）
+- `POST /api/agent/pair` → 生成 6 位数字连接码，返回 `{ code, url, qr }`（`qr` 是 PNG Data URL，`url` 指向 `/phone?code=…`）
 - `POST /api/broadcast`，body `{ "msg": "...", "code": "123456" }` → 只向该连接码的房间广播 `chat message`，payload `{ id, msg, code }`
 - Socket.IO 事件：`welcome`（连接时）、`phone join`（`{ code }`，加入该码的房间）、`chat message`（聊天/广播，必须带有效 `code`）
+- Agent 同步：agent 通过 `agent messages`（`{ code, messages }`）推送对话快照，服务端只向该码房间广播 `agent messages`；手机页面用 `agent sync`（`{ code }`）请求一次快照
 - 连接码在内存中保存 2 小时；配对与广播有简单的按 IP / 按码限流（超限返回 429，socket 消息超限直接丢弃）
 
 nginx 需要把真实客户端 IP 传给服务端，限流才按客户端生效：
