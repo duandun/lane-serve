@@ -6,6 +6,32 @@ import { Server } from 'socket.io';
 
 const app = express();
 app.use(express.json());
+app.set('trust proxy', true);
+
+// Simple in-memory fixed-window limiter; enough to stop casual floods.
+const rateBuckets = new Map();
+
+function allow(key, max, windowMs) {
+  const now = Date.now();
+  const bucket = rateBuckets.get(key);
+  if (!bucket || bucket.resetAt <= now) {
+    rateBuckets.set(key, { count: 1, resetAt: now + windowMs });
+    return true;
+  }
+  bucket.count += 1;
+  return bucket.count <= max;
+}
+
+function clientIP(req) {
+  return (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.ip || 'unknown';
+}
+
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, bucket] of rateBuckets) {
+    if (bucket.resetAt <= now) rateBuckets.delete(key);
+  }
+}, 60_000).unref();
 
 // The agent connects from its own origin (Vite/Electron), so pairing needs CORS.
 app.use((req, res, next) => {
@@ -54,7 +80,10 @@ app.get('/health', (_req, res) => {
 });
 
 // Pair a phone: issue one six-digit code and return the URL/QR the phone scans.
-app.post('/api/agent/pair', async (_req, res) => {
+app.post('/api/agent/pair', async (req, res) => {
+  if (!allow(`pair:${clientIP(req)}`, 10, 10 * 60 * 1000)) {
+    return res.status(429).json({ error: '请求过于频繁，请稍后再试' });
+  }
   try {
     const code = issuePhoneCode();
     const url = `${PUBLIC_BASE_URL}/broadcast?code=${encodeURIComponent(code)}`;
@@ -77,7 +106,10 @@ app.post('/api/broadcast', (req, res) => {
   if (!isValidPhoneCode(code)) {
     return res.status(400).json({ error: '连接码无效或已过期，请重新扫码' });
   }
-  io.emit('chat message', { id: 'api', msg, code });
+  if (!allow(`broadcast:${code}`, 20, 10 * 1000) || !allow(`broadcast-ip:${clientIP(req)}`, 60, 60 * 1000)) {
+    return res.status(429).json({ error: '发送过于频繁，请稍后再试' });
+  }
+  io.to(code).emit('chat message', { id: 'api', msg, code });
   res.json({ ok: true });
 });
 
@@ -92,12 +124,24 @@ io.on('connection', (socket) => {
     console.log(`disconnected ${socket.id} ${who} reason=${reason}`);
   });
 
+  socket.on('phone join', (payload) => {
+    const code = typeof payload?.code === 'string' ? payload.code.trim() : '';
+    if (!isValidPhoneCode(code) || !allow(`join:${socket.id}`, 10, 60 * 1000)) return;
+    if (socket.data.phoneCode) socket.leave(socket.data.phoneCode);
+    socket.data.phoneCode = code;
+    socket.join(code);
+  });
+
   socket.on('chat message', (payload) => {
-    const data = typeof payload === 'string' ? { msg: payload } : payload ?? {};
-    const msg = typeof data.msg === 'string' ? data.msg.trim() : '';
-    const code = typeof data.code === 'string' ? data.code.trim() : '';
+    const msg = typeof payload?.msg === 'string' ? payload.msg.trim() : '';
+    const code = typeof payload?.code === 'string' ? payload.code.trim() : '';
     if (!msg || !isValidPhoneCode(code)) return;
-    io.emit('chat message', { id: socket.id, msg: msg.slice(0, 500), code });
+    if (!allow(`msg:${socket.id}`, 20, 10 * 1000) || !allow(`msg-code:${code}`, 30, 10 * 1000)) return;
+    // Senders also join their code room so they see their own broadcast.
+    if (socket.data.phoneCode && socket.data.phoneCode !== code) socket.leave(socket.data.phoneCode);
+    socket.data.phoneCode = code;
+    socket.join(code);
+    io.to(code).emit('chat message', { id: socket.id, msg: msg.slice(0, 500), code });
   });
 });
 

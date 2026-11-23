@@ -21,7 +21,11 @@ function Chat() {
     const socket = io()
     socketRef.current = socket
 
-    socket.on('connect', () => setSocketId(socket.id ?? ''))
+    socket.on('connect', () => {
+      setSocketId(socket.id ?? '')
+      const c = new URLSearchParams(window.location.search).get('code')?.trim()
+      if (c) socket.emit('phone join', { code: c })
+    })
     socket.on('disconnect', () => setSocketId(''))
     socket.on('chat message', (m: Message) => setMessages((prev) => [...prev, m]))
 

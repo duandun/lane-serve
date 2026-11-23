@@ -8,8 +8,16 @@
 两者没有共享代码或依赖；接口约定为：
 
 - `GET /health` → `{ status: 'ok' }`
-- `POST /api/broadcast`，body `{ "msg": "..." }` → 广播 Socket.IO 事件 `chat message`，payload `{ id, msg }`
-- Socket.IO 事件 `welcome`（连接时）、`chat message`（聊天/广播）
+- `POST /api/agent/pair` → 生成 6 位数字连接码，返回 `{ code, url, qr }`（`qr` 是 PNG Data URL，`url` 指向 `/broadcast?code=…`）
+- `POST /api/broadcast`，body `{ "msg": "...", "code": "123456" }` → 只向该连接码的房间广播 `chat message`，payload `{ id, msg, code }`
+- Socket.IO 事件：`welcome`（连接时）、`phone join`（`{ code }`，加入该码的房间）、`chat message`（聊天/广播，必须带有效 `code`）
+- 连接码在内存中保存 2 小时；配对与广播有简单的按 IP / 按码限流（超限返回 429，socket 消息超限直接丢弃）
+
+nginx 需要把真实客户端 IP 传给服务端，限流才按客户端生效：
+
+```nginx
+proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+```
 
 ## 本地开发
 
